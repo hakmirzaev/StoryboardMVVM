@@ -12,10 +12,17 @@ class EditViewController: BaseViewController {
     var post: Post = Post(title: "", body: "")
     @IBOutlet weak var titleLabel: UITextField!
     @IBOutlet weak var bodyLabel: UITextField!
+    var viewModel = EditViewModel()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         initView()
+        bindViewModel()
+    }
+    
+    func callHomeViewController() {
+        dismiss(animated: true, completion: nil)
     }
     
     func initView() {
@@ -24,23 +31,19 @@ class EditViewController: BaseViewController {
         
         title = "Edit Post"
     }
+    
+    func bindViewModel(){
+        viewModel.controller = self
+    }
 
     @IBAction func saveButton(_ sender: Any) {
         if titleLabel.text != nil && bodyLabel.text != nil {
-            showProgress()
-            AFHttp.put(url: AFHttp.API_POST_UPDATE + (post.id)!, params: AFHttp.paramsPostCreate(post: Post(title: titleLabel.text!, body: bodyLabel.text!)), handler: { response in
-                self.hideProgress()
-                switch response.result {
-                case .success:
-                    print(response.result)
-                    self.navigationController?.popViewController(animated: true)
-                case let .failure(error):
-                    print(error)
+            viewModel.apiPostEdit(post: Post(id: post.id!, title: titleLabel.text!, body: bodyLabel.text!), handler: { response in
+                if response {
+                    self.callHomeViewController()
                 }
             })
         }
-        
-        dismiss(animated: true, completion: nil)
     }
 
 }

@@ -10,7 +10,7 @@ import UIKit
 class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet weak var tableView: UITableView!
-    var items = Array<Post>()
+    var viewModel = HomeViewModel()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,49 +19,21 @@ class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDa
         
     }
     
-    func refreshTableView(posts: [Post]) {
-        self.items = posts
-        self.tableView.reloadData()
-    }
-    
-    func apiPostList() {
-        showProgress()
-        
-        AFHttp.get(url: AFHttp.API_POST_LIST, params: AFHttp.paramsEmpty(), handler: { response in
-            self.hideProgress()
-            switch response.result {
-            case .success:
-                let posts = try! JSONDecoder().decode([Post].self, from: response.data!)
-                self.refreshTableView(posts: posts)
-            case let .failure(error):
-                print(error)
-            }
-        })
-    }
-    
-    func apiPostDelete(post: Post) {
-        showProgress()
-        
-        AFHttp.del(url: AFHttp.API_POST_DELETE + post.id!, params: AFHttp.paramsEmpty(), handler: { response in
-            self.hideProgress()
-            switch response.result {
-            case .success:
-                print(response.result)
-                self.apiPostList()
-            case let .failure(error):
-                print(error)
-            }
-        })
-    }
-    
-    
     // MARK: - Method
     func initViews(){
         tableView.dataSource = self
         tableView.delegate = self
         
         initNavigation()
-        apiPostList()
+        bindViewModel()
+        viewModel.apiPostList()
+    }
+    
+    func bindViewModel(){
+        viewModel.controller = self
+        viewModel.items.bind(to: self) { strongSelf, _ in
+            strongSelf.tableView.reloadData()
+        }
     }
     
     func initNavigation(){
@@ -70,7 +42,7 @@ class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDa
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: refresh, style: .plain, target: self, action: #selector(leftTapped))
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: add, style: .plain, target: self, action: #selector(rightTapped))
-        title = "Storyboard MVC"
+        title = "Storyboard MVVM"
     }
     
     func callCreateViewController() {
@@ -88,7 +60,7 @@ class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDa
     // MARK: - Action
     
     @objc func leftTapped(){
-        apiPostList()
+        viewModel.apiPostList()
     }
     
     @objc func rightTapped(){
@@ -98,11 +70,11 @@ class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDa
     // MARK: - TableView
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return items.count
+        return viewModel.items.value.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let item = items[indexPath.row]
+        let item = viewModel.items.value[indexPath.row]
         
         let cell = Bundle.main.loadNibNamed("PostTableViewCell", owner: self, options: nil)?.first as! PostTableViewCell
         
@@ -113,11 +85,11 @@ class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDa
     }
     
     func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration?{
-        return UISwipeActionsConfiguration(actions: [makeCompleteContextualAction(forRowAt: indexPath, post: items[indexPath.row])])
+        return UISwipeActionsConfiguration(actions: [makeCompleteContextualAction(forRowAt: indexPath, post: viewModel.items.value[indexPath.row])])
     }
     
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        return UISwipeActionsConfiguration(actions: [makeDeleteContextualAction(forRowAt: indexPath, post: items[indexPath.row])])
+        return UISwipeActionsConfiguration(actions: [makeDeleteContextualAction(forRowAt: indexPath, post: viewModel.items.value[indexPath.row])])
     }
     
     // MARK: - Contextual Actions
@@ -126,7 +98,11 @@ class HomeViewController: BaseViewController, UITableViewDelegate, UITableViewDa
         return UIContextualAction(style: .destructive, title: "Delete") { (action, swipeButtonView, completion) in
             print("DELETE HERE")
             
-            self.apiPostDelete(post: post)
+            self.viewModel.apiPostDelete(post: post, handler: { isDeleted in
+                if isDeleted {
+                    self.viewModel.apiPostList()
+                }
+            })
             completion(true)
         }
     }

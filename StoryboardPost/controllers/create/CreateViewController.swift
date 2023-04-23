@@ -8,33 +8,38 @@
 import UIKit
 
 class CreateViewController: BaseViewController {
-
+    
     @IBOutlet weak var titleLabel: UITextField!
     @IBOutlet weak var bodyLabel: UITextField!
+    var viewModel = CreateViewModel()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         initView()
+        bindViewModel()
     }
     
     func initView() {
         title = "Create Post"
     }
-
+    
+    func callHomeViewController() {
+        self.navigationController?.popViewController(animated: true)
+    }
+    
+    func bindViewModel(){
+        viewModel.controller = self
+    }
+    
     @IBAction func createButton(_ sender: Any) {
         if titleLabel.text != nil && bodyLabel.text != nil {
-            showProgress()
-            AFHttp.post(url: AFHttp.API_POST_CREATE, params: AFHttp.paramsPostCreate(post: Post(title: titleLabel.text!, body: bodyLabel.text!)), handler: { response in
-                self.hideProgress()
-                switch response.result {
-                case .success:
-                    print(response.result)
-                    self.navigationController?.popViewController(animated: true)
-                case let .failure(error):
-                    print(error)
+            viewModel.apiPostCreate(post: Post(title: titleLabel.text!, body: bodyLabel.text!), handler: { response in
+                if response {
+                    self.callHomeViewController()
                 }
             })
         }
     }
-
+    
 }
